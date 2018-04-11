@@ -1,0 +1,11 @@
+#!/bin/bash -e
+
+#-sb is for removing the extra content
+#get zone ID
+
+
+
+MAIL="tapirotamirsh@gmail.com"
+KEY="5699e0373a39ca57bc71df243c562e8a07a3a"
+
+curl -sb -X GET "https://api.cloudflare.com/client/v4/zones"		-H "X-Auth-Email: ${MAIL}"		-H "X-Auth-Key: ${KEY}"		-H "Content-Type: application/json"	| jq .result[0].id | sed 's/\"//g'

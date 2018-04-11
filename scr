@@ -1,0 +1,4 @@
+#!/bin/bash -e
+
+me="testsce.tk"
+host "$me" | awk '{print $4}'

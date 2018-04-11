@@ -1,0 +1,100 @@
+#!/bin/bash -e
+
+options=$(getopt -n cf-dns -o hqc:g:t:v: --long help,quiet,credentials:,get:,type:,value: -- "$@")
+# '-n' replacing file name in case of an error
+# '-o' stands for options (short options - only one char)
+#option with ':' means that after it -must- come an argument, '::' means that -should- come an argumet, and without ':' is just a flag like help or quiet
+#--long stands for long options
+#what comes after '--' is the argumets to parse by getopt
+
+exitStatus=0
+
+
+#echo "$options"
+eval set -- "$options"
+
+HELP="this is help description for cd-dns script."
+QUIET=false
+MAIL=""
+APIKEY=""
+SUBDOMAIN=""
+TYPE=""
+VALUE=""
+arg=""
+
+
+while true; do
+	echo "$@"
+    case "$1" in
+    -h | --help )
+        echo "help description" 
+        ;;
+
+    -q | --quiet )
+        QUIET=true
+        ;;
+
+    -g | --get )
+
+        SUBDOMAIN="${2}"
+		shift
+        ;;
+
+    -t | --type )
+        TYPE="${2}"
+		shift
+        ;;
+
+    -v | --value )
+        VALUE="${4}"
+        ;;
+
+    -c | --credentials )
+		arg="${2}"
+		MAIL="$(cut -d':' -f1 <<<"${arg}")"
+		APIKEY="$(cut -d':' -f2 <<<"${arg}")"
+        ;;
+
+
+
+    --)
+
+        shift
+        break
+        ;;
+    esac
+
+    shift
+done
+
+echo "${SUBDOMAIN}"
+echo "${TYPE}"
+echo "${QUIET}"
+echo "${MAIL}"
+echo "${APIKEY}"
+
+if [ \( -n "${SUBDOMAIN}" \) -a \( -n "${TYPE}" \) ]; then
+	host "${SUBDOMAIN}" >/dev/null
+	echo "${TYPE}"
+	if [ "$?" -eq 0 ]; then
+		host "${SUBDOMAIN}" | awk '{print $4}'
+	else
+		echo "cf-dns: DNS entry not found">&2
+		exit 1
+	fi
+fi 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
