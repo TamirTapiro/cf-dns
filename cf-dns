@@ -1,6 +1,6 @@
 #!/bin/bash -e
 
-options=$(getopt -n cf-dns -o hqc::g::t::v:: --long help,quiet,credentials::,get::,type::,value:: -- "$@")
+options=$(getopt -n cf-dns -o hqc:g:t:v: --long help,quiet,credentials:,get:,type:,value: -- "$@")
 
 # '-n' replacing file name in case of an error
 # '-o' stands for options (short options - only one char)
@@ -18,6 +18,7 @@ T_FLAG=false
 V_FLAG=false
 C_FLAG=false
 
+arr=("A" "AAAA" "CNAME" "TXT" "SRV" "LOC" "MX" "NS" "SPF")
 HELP="this is help description for cf-dns script."
 QUIET=false
 MAIL=""
@@ -25,7 +26,7 @@ APIKEY=""
 SUBDOMAIN=""
 TYPE=""
 VALUE=""
-arg=""
+arg="$CF_CREDENTIALS"
 
 
 
@@ -34,6 +35,7 @@ while true; do
 
     -h | --help )
         echo "$HELP" 
+		exit 1
         ;;
 
     -q | --quiet )
@@ -45,12 +47,25 @@ while true; do
     -g | --get )
 		G_FLAG=true
         SUBDOMAIN="${2}"
+		if [[ ! $SUBDOMAIN =~ ^[a-z]++."tk"$ ]]; then
+  			echo "SubDomain name is not look valid." 1>&2
+			exit 1
+		fi
 		shift
         ;;
 
     -t | --type )
+		
 		T_FLAG=true
         TYPE="${2}"
+		if [[ $TYPE =~ ^[a-z_-]+$ ]]; then	
+			TYPE=$(echo $TYPE | tr [a-z] [A-Z])
+			if [[ ! " ${arr[*]} " == *" $TYPE "* ]]; then
+				echo "$TYPE"
+				echo "type is not valid according the CloudFlare API." 1>&2  
+				exit 1
+			fi     
+		fi
 		shift
         ;;
 
@@ -61,33 +76,41 @@ while true; do
         ;;
 
     -c | --credentials )
-
-		echo "$2"
 		C_FLAG=true
 		arg="${2}"
 		MAIL="${arg%:*}"
 		APIKEY="${arg#*:}"
-		echo "$MAIL"
-		echo "$APIKEY"
 		if [[ ! $MAIL =~ ^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,4}$ ]]; then 
 			echo "mail address in not valid." 1>&2
+			exit 1
 		fi
 
 		if [[ ! $APIKEY =~ ^[a-z0-9_-]+$ ]]; then 
 			echo "API KEY is not valid." 1>&2
+			exit 1
 		fi
 		shift
         ;;
+
+	*)
+		echo "extra argument is not supported." 1>&2
+		exit 1
+		;;
 
     --)
 
         shift
         break
         ;;
-    esac
 
+    esac
     shift
 done
+
+if [ "$C_FLAG" = false ]; then #checking
+	MAIL="${arg%:*}"
+	APIKEY="${arg#*:}"
+fi
 
 if [ -z "$SUBDOMAIN" -a $G_FLAG = true ]; then 
 	echo "missing subdomain argument" 1>&2
@@ -109,11 +132,11 @@ if [ -z "$arg" -a $C_FLAG = true ]; then
 	exit 1
 fi
 
-echo "${SUBDOMAIN}"
-echo "${TYPE}"
-echo "${QUIET}"
-echo "${MAIL}"
-echo "${APIKEY}"
+#echo "${SUBDOMAIN}"
+#echo "${TYPE}"
+#echo "${QUIET}"
+#echo "${MAIL}"
+#echo "${APIKEY}"
 
 
 
