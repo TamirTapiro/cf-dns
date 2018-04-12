@@ -1,6 +1,6 @@
 #!/bin/bash -e
 
-options=$(getopt -n cf-dns -o hqc:g::t:v: --long help,quiet,credentials:,get:,type:,value: -- "$@")
+options=$(getopt -n cf-dns -o hqc::g::t::v:: --long help,quiet,credentials::,get::,type::,value:: -- "$@")
 
 # '-n' replacing file name in case of an error
 # '-o' stands for options (short options - only one char)
@@ -30,7 +30,6 @@ arg=""
 
 
 while true; do
-	echo "$@"
     case "$1" in
 
     -h | --help )
@@ -40,7 +39,7 @@ while true; do
     -q | --quiet )
 		#not working
         QUIET=true
-		exec 2>/dev/null 2>&1
+		exec 2>/dev/null
         ;;
 
     -g | --get )
@@ -62,10 +61,21 @@ while true; do
         ;;
 
     -c | --credentials )
-		c_FLAG=true
+
+		echo "$2"
+		C_FLAG=true
 		arg="${2}"
 		MAIL="${arg%:*}"
 		APIKEY="${arg#*:}"
+		echo "$MAIL"
+		echo "$APIKEY"
+		if [[ ! $MAIL =~ ^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,4}$ ]]; then 
+			echo "mail address in not valid." 1>&2
+		fi
+
+		if [[ ! $APIKEY =~ ^[a-z0-9_-]+$ ]]; then 
+			echo "API KEY is not valid." 1>&2
+		fi
 		shift
         ;;
 
@@ -78,6 +88,26 @@ while true; do
 
     shift
 done
+
+if [ -z "$SUBDOMAIN" -a $G_FLAG = true ]; then 
+	echo "missing subdomain argument" 1>&2
+	exit 1
+fi
+#******************
+if [ -z "$TYPE" -a $T_FLAG = true ]; then 
+	echo "missing type argument" 1>&2
+	exit 1
+fi
+#******************
+if [ -z "$VALUE" -a $V_FLAG = true ]; then 
+	echo "missing value argument" 1>&2
+	exit 1
+fi
+#******************
+if [ -z "$arg" -a $C_FLAG = true ]; then 
+	echo "missing cardentials argument" 1>&2
+	exit 1
+fi
 
 echo "${SUBDOMAIN}"
 echo "${TYPE}"
