@@ -1,6 +1,7 @@
 #!/bin/bash -e
 
-options=$(getopt -n cf-dns -o hqc:g:t:v: --long help,quiet,credentials:,get:,type:,value: -- "$@")
+options=$(getopt -n cf-dns -o hqc:g::t:v: --long help,quiet,credentials:,get:,type:,value: -- "$@")
+
 # '-n' replacing file name in case of an error
 # '-o' stands for options (short options - only one char)
 #option with ':' means that after it -must- come an argument, '::' means that -should- come an argumet, and without ':' is just a flag like help or quiet
@@ -12,8 +13,12 @@ exitStatus=0
 
 #echo "$options"
 eval set -- "$options"
+G_FLAG=false
+T_FLAG=false
+V_FLAG=false
+C_FLAG=false
 
-HELP="this is help description for cd-dns script."
+HELP="this is help description for cf-dns script."
 QUIET=false
 MAIL=""
 APIKEY=""
@@ -23,39 +28,46 @@ VALUE=""
 arg=""
 
 
+
 while true; do
 	echo "$@"
     case "$1" in
+
     -h | --help )
-        echo "help description" 
+        echo "$HELP" 
         ;;
 
     -q | --quiet )
+		#not working
         QUIET=true
+		exec 2>/dev/null 2>&1
         ;;
 
     -g | --get )
-
+		G_FLAG=true
         SUBDOMAIN="${2}"
 		shift
         ;;
 
     -t | --type )
+		T_FLAG=true
         TYPE="${2}"
 		shift
         ;;
 
     -v | --value )
-        VALUE="${4}"
+		V_FLAG=true
+        VALUE="${2}"
+		shift
         ;;
 
     -c | --credentials )
+		c_FLAG=true
 		arg="${2}"
-		MAIL="$(cut -d':' -f1 <<<"${arg}")"
-		APIKEY="$(cut -d':' -f2 <<<"${arg}")"
+		MAIL="${arg%:*}"
+		APIKEY="${arg#*:}"
+		shift
         ;;
-
-
 
     --)
 
@@ -73,9 +85,10 @@ echo "${QUIET}"
 echo "${MAIL}"
 echo "${APIKEY}"
 
+
+
 if [ \( -n "${SUBDOMAIN}" \) -a \( -n "${TYPE}" \) ]; then
 	host "${SUBDOMAIN}" >/dev/null
-	echo "${TYPE}"
 	if [ "$?" -eq 0 ]; then
 		host "${SUBDOMAIN}" | awk '{print $4}'
 	else
