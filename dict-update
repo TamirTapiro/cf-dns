@@ -1,0 +1,90 @@
+#!/bin/bash
+#Read the options
+#Option flags
+shiftNum=
+qFlag=
+hFlag=
+dictionary=
+translation=
+word=
+#Check if no arguments found
+if [ "$#" -eq 0 ]; then
+    echo "No arguments passed." 1>&2
+    exit 1
+fi
+TEMP=$(getopt -o hqd::w:--:t: --long dictionary::,quiet:,help::,word:,translation: -- "$@")
+if [ $? != 0 ] ; then echo "Failed parsing options." >&2 ; exit 1 ; fi
+eval set -- "$TEMP"
+#Extract options and their arguments into variables
+while true; do
+    case "$1" in
+	-h|--help)
+	    hFlag=1;
+	    break
+	    ;;
+	-q|--quiet)
+	    qFlag=1;
+	    shift
+	    ;;
+	"-w"|--word)
+	    word="$2";
+	    shift 2
+	    ;;
+	-t|--translation)
+	    translation="$2";
+	    shift 2
+	    ;;
+	-d|--dictionary)
+	    if [ -f $2 ]; then
+		dictionary="$2"
+		shift 2
+	    else shift
+	    fi
+	    ;;
+	--)
+	    dictionary="$2";
+	    shift 2
+	    ;;
+	*)
+	    if [ -z "$1" ]; then
+		 break;
+	    else #If the user sent too many or incorrect arguments
+		if [ "$qFlag" != 1 ]; then
+		    echo "$1 is not a valid option"; 1>&2
+		else
+		    echo "$1 is not a valid option" 1>&2>/dev/null
+		fi
+		exit 1
+	    fi
+	    ;;
+    esac
+done
+if [ "$hFlag" = 1 ]; then
+        echo "./dict-lookup [-qhd] <dictionary> [-w] WORD."
+        echo "-q - don't show errors."
+        echo "-h - print synopsis of how to run the script."
+        echo "-- - disable the use of the flag from this point on."
+    exit 0
+fi
+#check if the user have passed all the arguments
+if [ -z "${word}" -o -z "${translation}" ]; then
+    if [ "$qFlag" = 1 ]; then
+        echo "You must pass both word and its translation to the script!" 1>&2>/dev/null
+    else
+        echo "You must pass both word and its translation to the script!" 1>&2
+    fi
+    exit 1
+fi
+if [ -z "${dictionary}" ]; then #user didnt specify the dictionery file
+    dictionary=$DICTIONARY
+fi
+var=$(grep "${word}:" "${dictionary}") #store the value from search in the dict
+
+#if the value is`nt null -> delete the line and insert a new one using $1 as key and $2 as value                                             
+if [ ! -z "${var}" ]; then
+    sed -i "/${word}:/d" ./"${dictionary}"
+    echo "${word}:${translation}" >> "${dictionary}"
+else
+    #if the word does`nt exist in the dict -> var=null
+    echo "${word}:${translation}" >> "${dictionary}"
+fi

@@ -1,0 +1,98 @@
+#!/bin/bash
+#Read the options
+#Option flags
+shiftNum=
+qFlag=
+hFlag=
+dictionary=
+translation=
+word=
+#Check if no arguments found
+if [ "$#" -eq 0 ]; then
+    echo "No arguments passed." 1>&2
+    exit 1
+fi
+TEMP=$(getopt -o hqd::w:--:t: --long dictionary::,quiet:,help::,word:,translation: -- "$@")
+if [ $? != 0 ] ; then echo "Failed parsing options." >&2 ; exit 1 ; fi
+eval set -- "$TEMP"
+#Extract options and their arguments into variables
+while true; do
+    case "$1" in
+	-h|--help)
+	    hFlag=1;
+	    break
+	    ;;
+	-q|--quiet)
+	    qFlag=1;
+	    shift
+	    ;;
+	-w|--word)
+	    word="$2";
+	    shift 2
+	    ;;
+	-t|--translate)
+	    translate="$2";
+	    shift 2
+	    ;;
+	-d|--dictionary)
+	    if [ -f $2 ]; then
+		dictionary="$2"
+		shift 2
+	    else
+		dictionary=$DICTIONARY
+	    	shift 1
+	    fi
+	    ;;
+	--)
+	    dictionary="$2";
+	    shift 2
+	    ;;
+	*)
+	    if [ -z "$1" ]; then
+		 break;
+	    else 
+		if [ "$qFlag" != 1 ]; then
+		    echo "$1 is not a valid option"; 1>&2
+		else
+		    echo "$1 is not a valid option" 1>&2>/dev/null
+		fi
+		exit 1
+	    fi
+	    ;;
+    esac
+done
+if [ "$hFlag" = 1 ]; then
+        echo "./dict-lookup [-qhd] <dictionary> [-w] WORD."
+        echo "-q - don't show errors."
+        echo "-h - print synopsis of how to run the script."
+        echo "-- - disable the use of the flag from this point on."
+    exit 0
+fi
+#Regex for word finding
+wordResult="${word}:(.*)"
+
+#Check that the user passed a word argument
+if [ "$word" = "" ]; then
+    if [ "$qFlag" = 1 ]; then
+        echo "No word was given for a search" 1>&2>/dev/null
+        exit 1
+    fi
+    echo "No word was given for a search" 1>&2
+    exit 1
+fi
+#Check dictionary for wanted word and show the translation if found
+while read -r line
+do
+        if [[ $line =~ $wordResult ]]; then
+            echo "${BASH_REMATCH[1]}"
+            exit 0
+        fi
+done < "$dictionary"
+#If the word was not found, invoke appropriate error message
+if [ "$qFlag" = 1 ];then
+    echo "Word not found" 1>&2>/dev/null
+    exit 1
+fi
+echo "Word not found" 1>&2
+exit 1
+
