@@ -26,8 +26,7 @@ APIKEY=""
 SUBDOMAIN=""
 TYPE=""
 VALUE=""
-arg="$CF_CREDENTIALS"
-
+CREDENTIALS="$CF_CREDENTIALS"
 
 
 while true; do
@@ -47,8 +46,8 @@ while true; do
     -g | --get )
 		G_FLAG=true
         SUBDOMAIN="${2}"
-		if [[ ! $SUBDOMAIN =~ ^[a-z]++."tk"$ ]]; then
-  			echo "SubDomain name is not look valid." 1>&2
+		if [[ ! $SUBDOMAIN =~ ^[a-z_-]++."tk"$ ]]; then ###need to be handeled
+  			echo "cf-dns: subdomain does not look right" 1>&2
 			exit 1
 		fi
 		shift
@@ -77,28 +76,28 @@ while true; do
 
     -c | --credentials )
 		C_FLAG=true
-		arg="${2}"
-		MAIL="${arg%:*}"
-		APIKEY="${arg#*:}"
+		CREDENTIALS="${2}"
+		MAIL="${CREDENTIALS%:*}"
+		APIKEY="${CREDENTIALS#*:}"
 		if [[ ! $MAIL =~ ^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,4}$ ]]; then 
-			echo "mail address in not valid." 1>&2
+			echo "cf-dns: credentials do not contain an email component." 1>&2
 			exit 1
 		fi
 
 		if [[ ! $APIKEY =~ ^[a-z0-9_-]+$ ]]; then 
-			echo "API KEY is not valid." 1>&2
+			echo "cf-dns: credentials do not contain an API component." 1>&2
 			exit 1
 		fi
 		shift
         ;;
 
-	*)
-		echo "extra argument is not supported." 1>&2
-		exit 1
-		;;
+
 
     --)
-
+		if [ ! -z "$2" ];then
+			echo "cf-dns: unknown extra arguments" 1>&2
+			exit 1
+		fi
         shift
         break
         ;;
@@ -107,28 +106,28 @@ while true; do
     shift
 done
 
-if [ "$C_FLAG" = false ]; then #checking
-	MAIL="${arg%:*}"
-	APIKEY="${arg#*:}"
+if [ "$C_FLAG" = false ]; then #checking if the user didnt specified -c, we check if there is env var for this
+	MAIL="${CREDENTIALS%:*}"
+	APIKEY="${CREDENTIALS#*:}"
 fi
 
 if [ -z "$SUBDOMAIN" -a $G_FLAG = true ]; then 
-	echo "missing subdomain argument" 1>&2
+	echo "option '-g | --get' requires an argument" 1>&2
 	exit 1
 fi
 #******************
 if [ -z "$TYPE" -a $T_FLAG = true ]; then 
-	echo "missing type argument" 1>&2
+	echo "option '-t | --type' requires an argument" 1>&2
 	exit 1
 fi
 #******************
 if [ -z "$VALUE" -a $V_FLAG = true ]; then 
-	echo "missing value argument" 1>&2
+	echo "option '-v | --value' requires an argument" 1>&2
 	exit 1
 fi
 #******************
-if [ -z "$arg" -a $C_FLAG = true ]; then 
-	echo "missing cardentials argument" 1>&2
+if [ -z "$CREDENTIALS" -a $C_FLAG = true ]; then 
+	echo "option '-c | --credentials' requires an argument" 1>&2
 	exit 1
 fi
 
@@ -137,6 +136,15 @@ fi
 #echo "${QUIET}"
 #echo "${MAIL}"
 #echo "${APIKEY}"
+if [ -z "$CREDENTIALS" ];then
+	echo "cf-dns: CloudFlare credentials not specified" 1>&2
+	exit 1
+fi
+
+if [ -z "$TYPE" ];then
+	echo "cf-dns: DNS entry type not specified" 1>&2
+	exit 1
+fi
 
 
 

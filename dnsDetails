@@ -5,12 +5,13 @@
 
 
 
-zoneID=./getZoneId
+
+zoneID=$(./getZoneId)
 
 mail="tapirotamirsh@gmail.com"
 key="5699e0373a39ca57bc71df243c562e8a07a3a"
 
-curl -sb -X GET "https://api.cloudflare.com/client/v4/zones/1c85e57e85ae11f07ba2aeb951fe47fc/dns_records" \
+curl -s -X GET "https://api.cloudflare.com/client/v4/zones/${zoneID}/dns_records" \
      -H "X-Auth-Email: ${mail}" \
      -H "X-Auth-Key: ${key}" \
-     -H "Content-Type: application/json" | jq
+     -H "Content-Type: application/json"
