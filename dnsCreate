@@ -1,0 +1,14 @@
+#!/bin/bash -e
+
+
+tmp=$(curl -X POST "https://api.cloudflare.com/client/v4/zones/${1}/dns_records" \
+     -H "X-Auth-Email: ${2}" \
+     -H "X-Auth-Key: ${3}" \
+     -H "Content-Type: application/json" \
+     --data '{"type":"'${4}'","name":"'${5}'","content":"'${6}'"}' | jq '.success')
+
+if [ "$tmp" = "false" ];then
+	echo 1
+else
+	echo 0
+fi	

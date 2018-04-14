@@ -1,0 +1,17 @@
+#!/bin/bash -e
+
+# -sb is for remove background content
+# you can use command sed 's/\"//g' for remove "" from the output
+
+
+
+
+zoneID=$(./getZoneId tapirotamirsh@gmail.com 5699e0373a39ca57bc71df243c562e8a07a3a)
+#echo "$zoneID"
+#mail="tapirotamirsh@gmail.com"
+#key="5699e0373a39ca57bc71df243c562e8a07a3a"
+
+curl -s -X GET "https://api.cloudflare.com/client/v4/zones/$1/dns_records" \
+     -H "X-Auth-Email: $2" \
+     -H "X-Auth-Key: $3" \
+     -H "Content-Type: application/json" | jq '.result[] | select(.name == "'$4'") | .id' | sed 's/\"//g'
