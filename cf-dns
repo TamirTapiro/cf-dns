@@ -1,6 +1,6 @@
 #!/bin/bash -e
 
-options=$(getopt -n cf-dns -o hqc:g:t:v:u: --long help,quiet,credentials:,get:,type:,value:update: -- "$@")
+options=$(getopt -n cf-dns -o hqc:g:t:v:u: --long help,quiet,credentials:,get:,type:,value:,update: -- "$@")
 
 # '-n' replacing file name in case of an error
 # '-o' stands for options (short options - only one char)
@@ -8,7 +8,28 @@ options=$(getopt -n cf-dns -o hqc:g:t:v:u: --long help,quiet,credentials:,get:,t
 #--long stands for long options
 #what comes after '--' is the argumets to parse by getopt
 
-exitStatus=0
+HELP="	cf-dns - Domain Manage Tool [version 1]
+
+	Usage:
+	* cf-dns -h|--help
+	* cf-dns [-q|--quiet] -c|--credentials <email>:<apikey> -g|--get <subdomain> -t|--type <type>
+	* cf-dns [-q|--quiet] -c|--credentials <email>:<apikey> -u|--update <subdomain>
+	-t|--type <type> -v|--value <value>
+
+	cf-dns is a manage tool for CloudFlare API acoording to instructions,
+	given us by task2 in linux course.
+	This script use JQ and CloudFlare API to invoke changes on our domains.
+
+	Options include:
+	 -h|--help		Print help to the screen via stdout;
+	 -q|--quiet		use for silence stderr messages from cf-dns script;
+	 -g|--get		Domain\Subdomain input;
+	 -t|--type		Dns record types alloewed by CloudFlare API;
+	 -c|--credentials		input for <MAIL>:<APIKEY>;
+	 -u|--update	user input for updating exist dns record;
+	 -v|--value		new value for the last row;
+	 
+"
 
 
 #echo "$options"
@@ -20,7 +41,6 @@ C_FLAG=false
 U_FLAG=false
 
 arr=("A" "AAAA" "CNAME" "TXT" "SRV" "LOC" "MX" "NS" "SPF")
-HELP="this is help description for cf-dns script."
 QUIET=false
 MAIL=""
 APIKEY=""
@@ -49,7 +69,10 @@ while true; do
     -g | --get )
 		G_FLAG=true
         SUBDOMAIN="${2}"
-		#if [[ ! $SUBDOMAIN =~ ^[a-z_-]++."tk"$ ]]; then ###need to be handeled
+		if [[ ! $SUBDOMAIN =~ ^([a-z]+\.)?[a-z]+\.tk ]]; then #subdomain must contain sofix of ".tk" and if 
+			echo "cf-dns: subdomain dows not look right" 1>&2
+			exit 1
+		fi
   		#	echo "cf-dns: subdomain does not look right" 1>&2
 		#	exit 1
 		#fi
@@ -69,15 +92,11 @@ while true; do
 		shift
         ;;
 
-    -v | --value )
-		V_FLAG=true
-        VALUE="${2}"
-		shift
-        ;;
+	-u | --update )
 
-	-u | --update)
 		U_FLAG=true
 		SUBDOMAIN="${2}"
+		shift
 		;;
 
     -c | --credentials )
@@ -94,6 +113,12 @@ while true; do
 			echo "cf-dns: credentials do not contain an API component." 1>&2
 			exit 1
 		fi
+		shift
+        ;;
+
+    -v | --value )
+		V_FLAG=true
+        VALUE="${2}"
 		shift
         ;;
 
@@ -150,7 +175,8 @@ if [ "$U_FLAG" = true ]; then #user wnats to update details
 	if [ -n "$VALUE" ];then 
 		if [ -z "$urlID" ];then #the update value is not an exsit entry
 			create=$(./dnsCreate "$zoneID" "$MAIL" "$APIKEY" "$TYPE" "$SUBDOMAIN" "$VALUE")
-			if [ "$status" -eq 0 ];then
+			
+			if [ "$create" = 0 ]; then
 				echo "Creating new entry"
 				exit 0
 			else

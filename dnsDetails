@@ -11,7 +11,7 @@ mail="tapirotamirsh@gmail.com"
 zoneID=$(./getZoneId "$mail" "$key")
 #echo "$zoneID"
 
-curl -s -X GET "https://api.cloudflare.com/client/v4/zones/$1/dns_records" \
+curl -sb -X GET "https://api.cloudflare.com/client/v4/zones/$1/dns_records" \
      -H "X-Auth-Email: $2" \
      -H "X-Auth-Key: $3" \
      -H "Content-Type: application/json" | jq .result[] | sed 's/\"//g'

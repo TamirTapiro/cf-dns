@@ -7,7 +7,7 @@ TYPE="A"
 #1c85e57e85ae11f07ba2aeb951fe47fc
 #1d6b6b33369b0cb12f934312d97dc7fa
 
-tmp=$(curl -s -X PUT "https://api.cloudflare.com/client/v4/zones/${1}/dns_records/${2}" \
+tmp=$(curl -sb -X PUT "https://api.cloudflare.com/client/v4/zones/${1}/dns_records/${2}" \
      -H "X-Auth-Email: ${3}" \
      -H "X-Auth-Key: ${4}" \
      -H "Content-Type: application/json" \
