@@ -4,10 +4,17 @@
 mail="tapirotamirsh@gmail.com"
 key="5699e0373a39ca57bc71df243c562e8a07a3a"
 TYPE="A"
+#1c85e57e85ae11f07ba2aeb951fe47fc
+#1d6b6b33369b0cb12f934312d97dc7fa
 
-curl -X PUT "https://api.cloudflare.com/client/v4/zones/1c85e57e85ae11f07ba2aeb951fe47fc/dns_records/1d6b6b33369b0cb12f934312d97dc7fa" \
-     -H "X-Auth-Email: ${mail}" \
-     -H "X-Auth-Key: ${key}" \
+tmp=$(curl -s -X PUT "https://api.cloudflare.com/client/v4/zones/${1}/dns_records/${2}" \
+     -H "X-Auth-Email: ${3}" \
+     -H "X-Auth-Key: ${4}" \
      -H "Content-Type: application/json" \
-     --data '{"type":"'${TYPE}'","name":"www.testsce.tk","content":"'${1}'"}' | jq
+     --data '{"type":"'${5}'","name":"'${6}'","content":"'${7}'"}' | jq '.success')
 
+if [ "$tmp" = "false" ];then
+	echo 1
+else
+	echo 0
+fi	

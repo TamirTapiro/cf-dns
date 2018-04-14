@@ -1,6 +1,6 @@
 #!/bin/bash -e
 
-options=$(getopt -n cf-dns -o hqc:g:t:v: --long help,quiet,credentials:,get:,type:,value: -- "$@")
+options=$(getopt -n cf-dns -o hqc:g:t:v:u: --long help,quiet,credentials:,get:,type:,value:update: -- "$@")
 
 # '-n' replacing file name in case of an error
 # '-o' stands for options (short options - only one char)
@@ -17,6 +17,7 @@ G_FLAG=false
 T_FLAG=false
 V_FLAG=false
 C_FLAG=false
+U_FLAG=false
 
 arr=("A" "AAAA" "CNAME" "TXT" "SRV" "LOC" "MX" "NS" "SPF")
 HELP="this is help description for cf-dns script."
@@ -26,6 +27,9 @@ APIKEY=""
 SUBDOMAIN=""
 TYPE=""
 VALUE=""
+UPDATE=""
+zoneID=""
+urlID=""
 CREDENTIALS="$CF_CREDENTIALS"
 
 
@@ -38,7 +42,6 @@ while true; do
         ;;
 
     -q | --quiet )
-		#not working
         QUIET=true
 		exec 2>/dev/null
         ;;
@@ -46,24 +49,22 @@ while true; do
     -g | --get )
 		G_FLAG=true
         SUBDOMAIN="${2}"
-		if [[ ! $SUBDOMAIN =~ ^[a-z_-]++."tk"$ ]]; then ###need to be handeled
-  			echo "cf-dns: subdomain does not look right" 1>&2
-			exit 1
-		fi
+		#if [[ ! $SUBDOMAIN =~ ^[a-z_-]++."tk"$ ]]; then ###need to be handeled
+  		#	echo "cf-dns: subdomain does not look right" 1>&2
+		#	exit 1
+		#fi
 		shift
         ;;
 
     -t | --type )
-		
 		T_FLAG=true
         TYPE="${2}"
-		if [[ $TYPE =~ ^[a-z_-]+$ ]]; then	
+		if [[ $TYPE =~ ^[a-z_-]+$ ]]; then	#convert lowercase into uppercase
 			TYPE=$(echo $TYPE | tr [a-z] [A-Z])
-			if [[ ! " ${arr[*]} " == *" $TYPE "* ]]; then
-				echo "$TYPE"
+		fi
+		if [[ ! " ${arr[*]} " == *" $TYPE "* ]]; then #check if the type is fit to cloudflare api
 				echo "type is not valid according the CloudFlare API." 1>&2  
-				exit 1
-			fi     
+				exit 1     
 		fi
 		shift
         ;;
@@ -73,6 +74,11 @@ while true; do
         VALUE="${2}"
 		shift
         ;;
+
+	-u | --update)
+		U_FLAG=true
+		SUBDOMAIN="${2}"
+		;;
 
     -c | --credentials )
 		C_FLAG=true
@@ -90,8 +96,6 @@ while true; do
 		fi
 		shift
         ;;
-
-
 
     --)
 		if [ ! -z "$2" ];then
@@ -111,64 +115,60 @@ if [ "$C_FLAG" = false ]; then #checking if the user didnt specified -c, we chec
 	APIKEY="${CREDENTIALS#*:}"
 fi
 
-if [ -z "$SUBDOMAIN" -a $G_FLAG = true ]; then 
-	echo "option '-g | --get' requires an argument" 1>&2
-	exit 1
-fi
-#******************
-if [ -z "$TYPE" -a $T_FLAG = true ]; then 
-	echo "option '-t | --type' requires an argument" 1>&2
-	exit 1
-fi
-#******************
-if [ -z "$VALUE" -a $V_FLAG = true ]; then 
-	echo "option '-v | --value' requires an argument" 1>&2
-	exit 1
-fi
-#******************
-if [ -z "$CREDENTIALS" -a $C_FLAG = true ]; then 
-	echo "option '-c | --credentials' requires an argument" 1>&2
-	exit 1
-fi
-
-#echo "${SUBDOMAIN}"
-#echo "${TYPE}"
-#echo "${QUIET}"
-#echo "${MAIL}"
-#echo "${APIKEY}"
-if [ -z "$CREDENTIALS" ];then
-	echo "cf-dns: CloudFlare credentials not specified" 1>&2
-	exit 1
-fi
-
 if [ -z "$TYPE" ];then
 	echo "cf-dns: DNS entry type not specified" 1>&2
 	exit 1
 fi
 
+zoneID=$(./getZoneId "${MAIL}" "${APIKEY}")
+urlID=$(./getID "${zoneID}" "${MAIL}" "${APIKEY}" "$SUBDOMAIN")
 
 
-if [ \( -n "${SUBDOMAIN}" \) -a \( -n "${TYPE}" \) ]; then
-	host "${SUBDOMAIN}" >/dev/null
-	if [ "$?" -eq 0 ]; then
-		host "${SUBDOMAIN}" | awk '{print $4}'
-	else
-		echo "cf-dns: DNS entry not found">&2
+if [ "$G_FLAG" = true ]; then # -g | --get option for details
+	if [ \( -n "${SUBDOMAIN}" \) -a \( -n "${TYPE}" \) -a \( -n "${MAIL}" \) -a \( -n "${APIKEY}" \) ]; then
+
+		zoneID=$(./getZoneId "${MAIL}" "${APIKEY}")
+		if [ "$zoneID" = "null" ]; then
+			echo "cf-dns: could not invoke CloudFlare API (bad credentials?)" 1>&2
+			exit 1
+		else
+			jqObj=$(./dnsDetails "$zoneID" "$MAIL" "$APIKEY")
+			#type=$(echo "$jqObj" | grep -Eo "type: ${TYPE}" | sed -r 's/^type: //' )
+			#echo "$type"
+			domain=$(echo "$jqObj" | grep -Eo "\bname: ${SUBDOMAIN}" | sed -r 's/^name: //' )
+			if [ ! "$domain" = "$SUBDOMAIN" ]; then
+				echo "cf-dns: could not retrieve zone ID, probably wrong domain" 1>&2
+				exit 1
+			else
+				host "${SUBDOMAIN}" | awk '{print $4}'
+			fi
+		fi 
+	fi 
+fi
+
+if [ "$U_FLAG" = true ]; then #user wnats to update details
+	if [ -n "$VALUE" ];then 
+		if [ -z "$urlID" ];then #the update value is not an exsit entry
+			create=$(./dnsCreate "$zoneID" "$MAIL" "$APIKEY" "$TYPE" "$SUBDOMAIN" "$VALUE")
+			if [ "$status" -eq 0 ];then
+				echo "Creating new entry"
+				exit 0
+			else
+				echo "cf-dns: could not invoke CloudFlare API (bad credentials?)" 1>&2
+				exit 1
+		fi		
+
+		fi
+		status=$(./dnsUpdate "$zoneID" "$urlID" "$MAIL" "$APIKEY" "$TYPE" "$SUBDOMAIN" "$VALUE")
+		if [ "$status" -eq 0 ];then
+			echo "Updating existing entry"
+			exit 0
+		else
+			echo "cf-dns: could not invoke CloudFlare API (bad credentials?)" 1>&2
+			exit 1
+		fi
+	else #user choose to update but didnt pass a value
+		echo "update value must been given!" 1>&2
 		exit 1
 	fi
-fi 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+fi
